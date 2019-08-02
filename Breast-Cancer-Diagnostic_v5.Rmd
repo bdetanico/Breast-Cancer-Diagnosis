@@ -1,0 +1,1738 @@
+---
+title: "Breast Cancer Diagnosis - EDA and Machine Learning"
+author: "Bernardo Carraro Detanico"
+date: "August 02, 2019"
+output:
+  html_document:
+      toc: yes
+      toc_depth: 2
+      code_folding: hide
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+## 1. Introduction
+
+The dataset, found on UCI Machine Learning Repository: https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+%28Diagnostic%29, consists of features which were computed from digitized images of fine needle aspirate (FNA) procedure of breast mass. The features describe characteristics of the cell nuclei present in the images.
+
+Ten real-valued features are computed for each cell nucleus. The following nuclear features were analyzed:
+
+	a) radius (mean of distances from center to points on the perimeter)
+	b) texture (standard deviation of gray-scale values)
+	c) perimeter
+	d) area
+	e) smoothness (local variation in radius lengths)
+	f) compactness (perimeter^2 / area - 1.0)
+	g) concavity (severity of concave portions of the contour)
+	h) concave points (number of concave portions of the contour)
+	i) symmetry 
+	j) fractal dimension ("coastline approximation" - 1)
+
+The dataset has the following attribute information:
+
+**(a) Number of instances: 569**
+
+**(b) Number of attributes: 32** 
+
+1. ID
+
+2. diagnosis: The diagnosis of breast tissues (M = malignant, B = benign) - Class distribution: 357 benign, 212 malignant
+
+3. radius_mean: mean of distances from center to points on the perimeter
+4. texture_mean: standard deviation of gray-scale values
+5. perimeter_mean: mean size of the core tumor
+6. area_mean
+7. smoothness_mean: mean of local variation in radius lengths
+8. compactness_mean: mean of perimeter^2 / area - 1.0
+9. concavity_mean: mean of severity of concave portions of the contour
+10. concave points_mean: mean for number of concave portions of the contour
+11. symmetry_mean
+12. fractal_dimension_mean: mean for "coastline approximation" - 1
+
+13. radius_se: standard error for the mean of distances from center to points on the perimeter
+14. texture_se: standard error for standard deviation of gray-scale values
+15. perimeter_se
+16. area_se
+17. smoothness_se: standard error for local variation in radius lengths
+18. compactness_se: standard error for perimeter^2 / area - 1.0
+19. concavity_se: standard error for severity of concave portions of the contour
+20. concave points_se: standard error for number of concave portions of the contour
+21. symmetry_se
+22. fractal_dimension_se: standard error for "coastline approximation" - 1
+
+23. radius_worst: "worst" or largest mean value for mean of distances from center to points on the perimeter
+24. texture_worst: "worst" or largest mean value for standard deviation of gray-scale values
+25. perimeter_worst
+26. area_worst
+27. smoothness_worst: "worst" or largest mean value for local variation in radius lengths
+28. compactness_worst: "worst" or largest mean value for perimeter^2 / area - 1.0
+29. concavity_worst: "worst" or largest mean value for severity of concave portions of the contour
+30. concave points_worst: "worst" or largest mean value for number of concave portions of the contour
+31. symmetry_worst
+32. fractal_dimension_worst: "worst" or largest mean value for "coastline approximation"
+
+Breast cancer is the most-common invasive cancer in women and affect about 12% of women worldwide (McGuire, A; Brown, JA; Malone, C; McLaughlin, R; Kerin, MJ (22 May 2015). "Effects of age on the detection and management of breast cancer". Cancers. 7 (2): 908–29. doi:10.3390/cancers7020815).
+
+The fine needle aspiration (FNA) procedure helps establish the breast cancer diagnosis. Together physical examination of breasts and mammography, FNAC can be used to diagnose breast cancer with a good degree of accuracy.
+
+A well-described characteristics in terms of the cell nuclei through digitized image, including the establishment of patterns/models, can helps improve breast cancer diagnosis.
+
+![**Figures 1, 2 and 3.** Digital images from a breast FNA. M. W. Teague, W. H. Wolberg, W. N. Street, O. L. Mangasarian, S. Labremont, and D. L. Page. Indeterminate fine needle aspiration of the breast: Image analysis aided diagnosis. Cancer Cytopathology 81: 129-135, 1997. W. N. Street. Xcyt: A System for Remote Cytological Diagnosis and Prognosis of Breast Cancer. Management Sciences Department. University of Iowa, Iowa City, IA.](https://i.imgur.com/GDZSUKn.jpg)
+
+**Objective**: Analyse cell nuclei characteristics, and if possible, identify patterns related to the diagnosis of breast tissues (malignant or benign). Additionally, it will be proposed a machine learning models for diagnosis.
+
+## 2. Loading Packages and Dataset
+
+```{r packages}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(formattable)
+library(reshape2)
+library(pander)
+library(ggpubr)
+library(ggpmisc)
+library(ltm)
+library(randomForest)
+library(GGally)
+library(RColorBrewer)
+library(car)
+library(corrplot)
+library(factoextra)
+library(FactoMineR)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(gridExtra)
+library(DT)
+```
+
+```{r}
+setwd("C:/Users/bdeta/Documents/R/Projects/2 - Breast Cancer")
+df <- as.data.frame(read_csv("data.csv"))
+```
+
+## 3. Exploratory Data Analysis (EDA)
+
+```{r}
+df <- subset(df, select = -X33) # Remove the column X33 (NAs)
+df$diagnosis <- as.factor(df$diagnosis) # Transform chr to factor
+names(df) <- gsub(" ", "_", names(df)) # Fix spaces in column names
+summary(df)
+```
+### 3.1. Nuclear features analysis: {.tabset .tabset-fade}
+
+#### 1. radius
+```{r}
+radius <- df %>%
+ dplyr::select(c(diagnosis, radius_mean, radius_se, radius_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_radius_mean = mean(radius_mean), Mean_radius_se = mean(radius_se), Mean_radius_worst = mean(radius_worst))
+
+formattable(radius, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_radius_mean = color_tile("#f7d383", "#fec306"),
+ Mean_radius_se = color_tile("#eb724d", "#df5227"),
+ Mean_radius_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of radius variables (mean, se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('radius_mean','radius_se','radius_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x radius variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for radius variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=2, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the radius variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.5)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("radius_mean", "radius_se", "radius_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the radius variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("radius_mean", "radius_se", "radius_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01. Hence, we reject the null hypothesis. There are significant differences for all radius variables (mean, se, worst) between the groups.
+
+**The malignant breast cancer group has the feature radius values (mean of distances from center to points on the perimeter) higher than the benign group.**
+
+```{r}
+cor.test(df$radius_mean, df$radius_worst)
+
+ggplot(df, aes(radius_mean, radius_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of radius variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, very strong (0.969539) and statistical significance (p-value < 2.2e-16) correlation between radius_mean and radius_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the radius feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$radius_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "strong")
+b2 <- biserial.cor(df$radius_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "moderate")
+b3 <- biserial.cor(df$radius_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "strong")
+```
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$radius_mean %in% boxplot(df$radius_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "radius_mean")]
+
+out_2 <- which(df$radius_se %in% boxplot(df$radius_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "radius_se")]
+
+out_3 <- which(df$radius_worst %in% boxplot(df$radius_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "radius_worst")]
+```
+
+#### 2. texture
+```{r}
+texture <- df %>%
+ dplyr::select(c(diagnosis, texture_mean, texture_se, texture_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_texture_mean = mean(texture_mean), Mean_texture_se = mean(texture_se), Mean_texture_worst = mean(texture_worst))
+
+formattable(texture, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_texture_mean = color_tile("#f7d383", "#fec306"),
+ Mean_texture_se = color_tile("#eb724d", "#df5227"),
+ Mean_texture_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of texture variables (mean, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('texture_mean','texture_se','texture_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x texture variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+The **variability/spread** for texture variables (mean, se, worst) seems to be similar between the groups.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=2, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the texture variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.4)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("texture_mean", "texture_se", "texture_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the texture variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("texture_mean", "texture_se", "texture_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01 in 2 of 3 texture variables. Hence, we reject the null hypothesis. There are significant differences for texture variables (mean, worst) between the groups.
+
+**The malignant breast cancer group has the feature texture values (standard deviation of gray-scale values) higher than the benign group.**
+
+```{r}
+cor.test(df$texture_mean, df$texture_worst)
+
+ggplot(df, aes(texture_mean, texture_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of texture variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, very strong (0.9120446) and statistical significance (p-value < 2.2e-16) correlation between texture_mean and texture_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the texture feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$texture_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "moderate")
+b2 <- biserial.cor(df$texture_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "very weak")
+b3 <- biserial.cor(df$texture_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "moderate")
+```
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$texture_mean %in% boxplot(df$texture_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "texture_mean")]
+
+out_2 <- which(df$texture_se %in% boxplot(df$texture_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "texture_se")]
+
+out_3 <- which(df$texture_worst %in% boxplot(df$texture_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "texture_worst")]
+```
+
+#### 3. perimeter
+```{r}
+perimeter <- df %>%
+ dplyr::select(c(diagnosis, perimeter_mean, perimeter_se, perimeter_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_perimeter_mean = mean(perimeter_mean), Mean_perimeter_se = mean(perimeter_se), Mean_perimeter_worst = mean(perimeter_worst))
+
+formattable(perimeter, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_perimeter_mean = color_tile("#f7d383", "#fec306"),
+ Mean_perimeter_se = color_tile("#eb724d", "#df5227"),
+ Mean_perimeter_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of perimeter variables (mean, se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('perimeter_mean','perimeter_se','perimeter_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x perimeter variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for perimeter variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=10, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the perimeter variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.15)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("perimeter_mean", "perimeter_se", "perimeter_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the perimeter variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("perimeter_mean", "perimeter_se", "perimeter_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01. Hence, we reject the null hypothesis. There are significant differences for all perimeter variables (mean, se, worst) between the groups.
+
+**The malignant breast cancer group has the feature perimeter values higher than the benign group.**
+
+```{r}
+cor.test(df$perimeter_mean, df$perimeter_worst)
+
+ggplot(df, aes(perimeter_mean, perimeter_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of perimeter variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, very strong (0.9703869) and statistical significance (p-value < 2.2e-16) correlation between perimeter_mean and perimeter_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the perimeter feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$perimeter_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "strong")
+b2 <- biserial.cor(df$perimeter_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "moderate")
+b3 <- biserial.cor(df$perimeter_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "strong")
+```
+
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$perimeter_mean %in% boxplot(df$perimeter_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "perimeter_mean")]
+
+out_2 <- which(df$perimeter_se %in% boxplot(df$perimeter_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "perimeter_se")]
+
+out_3 <- which(df$perimeter_worst %in% boxplot(df$perimeter_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "perimeter_worst")]
+```
+
+#### 4. area
+```{r}
+area <- df %>%
+ dplyr::select(c(diagnosis, area_mean, area_se, area_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_area_mean = mean(area_mean), Mean_area_se = mean(area_se), Mean_area_worst = mean(area_worst))
+
+formattable(area, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_area_mean = color_tile("#f7d383", "#fec306"),
+ Mean_area_se = color_tile("#eb724d", "#df5227"),
+ Mean_area_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of area variables (mean, se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('area_mean','area_se','area_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x area variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for area variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=170, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the area variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.015)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("area_mean", "area_se", "area_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the area variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("area_mean", "area_se", "area_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01. Hence, we reject the null hypothesis. There are significant differences for all area variables (mean, se, worst) between the groups.
+
+**The malignant breast cancer group has the feature area values higher than the benign group.**
+
+```{r}
+cor.test(df$area_mean, df$area_worst)
+
+ggplot(df, aes(area_mean, area_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of area variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, very strong (0.9592133) and statistical significance (p-value < 2.2e-16) correlation between area_mean and area_worst variables.
+
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the area feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$area_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "strong")
+b2 <- biserial.cor(df$area_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "moderate")
+b3 <- biserial.cor(df$area_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "strong")
+```
+
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$area_mean %in% boxplot(df$area_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "area_mean")]
+
+out_2 <- which(df$area_se %in% boxplot(df$area_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "area_se")]
+
+out_3 <- which(df$area_worst %in% boxplot(df$area_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "area_worst")]
+```
+
+#### 5. smoothness
+```{r}
+smoothness <- df %>%
+ dplyr::select(c(diagnosis, smoothness_mean, smoothness_se, smoothness_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_smoothness_mean = mean(smoothness_mean), Mean_smoothness_se = mean(smoothness_se), Mean_smoothness_worst = mean(smoothness_worst))
+
+formattable(smoothness, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_smoothness_mean = color_tile("#f7d383", "#fec306"),
+ Mean_smoothness_se = color_tile("#eb724d", "#df5227"),
+ Mean_smoothness_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of smoothness variables (mean, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('smoothness_mean','smoothness_se','smoothness_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x smoothness variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+The **variability/spread** for smoothness variables (mean, se, worst) seems to be similar between the groups.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=0.001, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the smoothness variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.6)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("smoothness_mean", "smoothness_se", "smoothness_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the smoothness variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("smoothness_mean", "smoothness_se", "smoothness_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01 in 2 of 3 texture variables. Hence, we reject the null hypothesis. There are significant differences for smoothness variables (mean, worst) between the groups.
+
+**The malignant breast cancer group has the feature smoothness values (local variation in radius lengths) higher than the benign group.**
+
+```{r}
+cor.test(df$smoothness_mean, df$smoothness_worst)
+
+ggplot(df, aes(smoothness_mean, smoothness_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of smoothness variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, strong (0.8053242) and statistical significance (p-value < 2.2e-16) correlation between smoothness_mean and smoothness_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the smoothness feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$smoothness_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "weak")
+b2 <- biserial.cor(df$smoothness_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "very weak")
+b3 <- biserial.cor(df$smoothness_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "moderate")
+```
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$smoothness_mean %in% boxplot(df$smoothness_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "smoothness_mean")]
+
+out_2 <- which(df$smoothness_se %in% boxplot(df$smoothness_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "smoothness_se")]
+
+out_3 <- which(df$smoothness_worst %in% boxplot(df$smoothness_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "smoothness_worst")]
+```
+
+#### 6. compactness
+```{r}
+compactness <- df %>%
+ dplyr::select(c(diagnosis, compactness_mean, compactness_se, compactness_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_compactness_mean = mean(compactness_mean), Mean_compactness_se = mean(compactness_se), Mean_compactness_worst = mean(compactness_worst))
+
+formattable(compactness, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_compactness_mean = color_tile("#f7d383", "#fec306"),
+ Mean_compactness_se = color_tile("#eb724d", "#df5227"),
+ Mean_compactness_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of compactness variables (mean, se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('compactness_mean','compactness_se','compactness_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x compactness variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for compactness variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=0.05, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the compactness variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.5)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("compactness_mean", "compactness_se", "compactness_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the compactness variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("compactness_mean", "compactness_se", "compactness_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01. Hence, we reject the null hypothesis. There are significant differences for all compactness variables (mean, se, worst) between the groups.
+
+**The malignant breast cancer group has the feature compactness values (perimeter^2 / area - 1.0) higher than the benign group.**
+
+```{r}
+cor.test(df$compactness_mean, df$compactness_worst)
+
+ggplot(df, aes(compactness_mean, compactness_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of compactness variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, very strong (0.865809) and statistical significance (p-value < 2.2e-16) correlation between compactness_mean and compactness_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the compactness feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$compactness_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "moderate")
+b2 <- biserial.cor(df$compactness_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "weak")
+b3 <- biserial.cor(df$compactness_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "moderate")
+```
+
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$compactness_mean %in% boxplot(df$compactness_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "compactness_mean")]
+
+out_2 <- which(df$compactness_se %in% boxplot(df$compactness_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "compactness_se")]
+
+out_3 <- which(df$compactness_worst %in% boxplot(df$compactness_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "compactness_worst")]
+```
+
+#### 7. concavity
+```{r}
+concavity <- df %>%
+ dplyr::select(c(diagnosis, concavity_mean, concavity_se, concavity_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_concavity_mean = mean(concavity_mean), Mean_concavity_se = mean(concavity_se), Mean_concavity_worst = mean(concavity_worst))
+
+formattable(concavity, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_concavity_mean = color_tile("#f7d383", "#fec306"),
+ Mean_concavity_se = color_tile("#eb724d", "#df5227"),
+ Mean_concavity_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of concavity variables (mean, se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('concavity_mean','concavity_se','concavity_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x concavity variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for concavity variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=0.05, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the concavity variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.5)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("concavity_mean", "concavity_se", "concavity_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the concavity variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("concavity_mean", "concavity_se", "concavity_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01. Hence, we reject the null hypothesis. There are significant differences for all concavity variables (mean, se, worst) between the groups.
+
+**The malignant breast cancer group has the feature concavity values (severity of concave portions of the contour) higher than the benign group.**
+
+```{r}
+cor.test(df$concavity_mean, df$concavity_worst)
+
+ggplot(df, aes(concavity_mean, concavity_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of concavity variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, very strong (0.8841026) and statistical significance (p-value < 2.2e-16) correlation between concavity_mean and concavity_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the concavity feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$concavity_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "strong")
+b2 <- biserial.cor(df$concavity_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "weak")
+b3 <- biserial.cor(df$concavity_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "strong")
+```
+
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$concavity_mean %in% boxplot(df$concavity_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "concavity_mean")]
+
+out_2 <- which(df$concavity_se %in% boxplot(df$concavity_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "concavity_se")]
+
+out_3 <- which(df$concavity_worst %in% boxplot(df$concavity_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "concavity_worst")]
+```
+
+
+#### 8. concave_points
+```{r}
+concave_points <- df %>%
+ dplyr::select(c(diagnosis, concave_points_mean, concave_points_se, concave_points_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_concave_points_mean = mean(concave_points_mean), Mean_concave_points_se = mean(concave_points_se), Mean_concave_points_worst = mean(concave_points_worst))
+
+formattable(concave_points, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_concave_points_mean = color_tile("#f7d383", "#fec306"),
+ Mean_concave_points_se = color_tile("#eb724d", "#df5227"),
+ Mean_concave_points_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of concave_points variables (mean, se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('concave_points_mean','concave_points_se','concave_points_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x concave_points variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for concave_points variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=0.02, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the concave_points variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.5)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("concave_points_mean", "concave_points_se", "concave_points_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the concave_points variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("concave_points_mean", "concave_points_se", "concave_points_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01. Hence, we reject the null hypothesis. There are significant differences for all concave_points variables (mean, se, worst) between the groups.
+
+**The malignant breast cancer group has the feature concave_points values (number of concave portions of the contour) higher than the benign group.**
+
+```{r}
+cor.test(df$concave_points_mean, df$concave_points_worst)
+
+ggplot(df, aes(concave_points_mean, concave_points_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of concave_points variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, very strong (0.9101553) and statistical significance (p-value < 2.2e-16) correlation between concave_points_mean and concave_points_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the concave_points feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$concave_points_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "strong")
+b2 <- biserial.cor(df$concave_points_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "moderate")
+b3 <- biserial.cor(df$concave_points_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "strong")
+```
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$concave_points_mean %in% boxplot(df$concave_points_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "concave_points_mean")]
+
+out_2 <- which(df$concave_points_se %in% boxplot(df$concave_points_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "concave_points_se")]
+
+out_3 <- which(df$concave_points_worst %in% boxplot(df$concave_points_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "concave_points_worst")]
+```
+
+#### 9. symmetry
+```{r}
+symmetry <- df %>%
+ dplyr::select(c(diagnosis, symmetry_mean, symmetry_se, symmetry_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_symmetry_mean = mean(symmetry_mean), Mean_symmetry_se = mean(symmetry_se), Mean_symmetry_worst = mean(symmetry_worst))
+
+formattable(symmetry, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_symmetry_mean = color_tile("#f7d383", "#fec306"),
+ Mean_symmetry_se = color_tile("#eb724d", "#df5227"),
+ Mean_symmetry_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of symmetry variables (mean, se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('symmetry_mean','symmetry_se','symmetry_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x symmetry variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for symmetry variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=0.04, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the symmetry variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.5)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("symmetry_mean", "symmetry_se", "symmetry_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the symmetry variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("symmetry_mean", "symmetry_se", "symmetry_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01 in 2 of 3 texture variables. Hence, we reject the null hypothesis. There are significant differences for symmetry variables (mean, worst) between the groups.
+
+**The malignant breast cancer group has the feature symmetry values higher than the benign group.**
+
+```{r}
+cor.test(df$symmetry_mean, df$symmetry_worst)
+
+ggplot(df, aes(symmetry_mean, symmetry_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of symmetry variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, moderate (0.6998258) and statistical significance (p-value < 2.2e-16) correlation between symmetry_mean and symmetry_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the symmetry feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$symmetry_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "weak")
+b2 <- biserial.cor(df$symmetry_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "very weak")
+b3 <- biserial.cor(df$symmetry_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "moderate")
+```
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$symmetry_mean %in% boxplot(df$symmetry_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "symmetry_mean")]
+
+out_2 <- which(df$symmetry_se %in% boxplot(df$symmetry_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "symmetry_se")]
+
+out_3 <- which(df$symmetry_worst %in% boxplot(df$symmetry_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "symmetry_worst")]
+```
+
+#### 10. fractal_dim
+```{r}
+fractal_dimension <- df %>%
+ dplyr::select(c(diagnosis, fractal_dimension_mean, fractal_dimension_se, fractal_dimension_worst)) %>%
+ group_by(diagnosis) %>%
+ summarise(Mean_fractal_dimension_mean = mean(fractal_dimension_mean), Mean_fractal_dimension_se = mean(fractal_dimension_se), Mean_fractal_dimension_worst = mean(fractal_dimension_worst))
+
+formattable(fractal_dimension, list(
+ diagnosis = formatter("span", style = ~ style(color = "grey",font.weight = "bold")),
+ Mean_fractal_dimension_mean = color_tile("#f7d383", "#fec306"),
+ Mean_fractal_dimension_se = color_tile("#eb724d", "#df5227"),
+ Mean_fractal_dimension_worst = color_tile("#b8ddf2", "#56B4E9")))
+```
+     
+The mean of fractal_dimension variables (se, worst) are **higher** in the malignant breast cancer group as compared to the benign breast cancer group. The mean of fractal_dimension_mean is similar in both groups.
+
+```{r}
+test.m <- melt(df,id.vars='diagnosis', measure.vars=c('fractal_dimension_mean','fractal_dimension_se','fractal_dimension_worst'))
+
+ggplot(test.m, aes(x=diagnosis, y=value, fill=variable)) +
+  geom_boxplot(alpha = 2/3) +
+  labs(x = 'diagnosis') +
+  scale_fill_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  scale_color_manual(values=c("#fec306", "#df5227", "#56B4E9")) +
+  theme_bw() + ggtitle("diagnosis x fractal_dimension variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  geom_jitter(alpha = I(1/4), aes(color = variable)) +
+  stat_summary(fun.y=mean, geom="text", size=3, vjust=-3, aes( label=round(..y.., digits=2)))
+```
+
+**Higher variability/spread** for fractal_dimension variables (mean, se, worst) was observed in the malignant breast cancer group.
+
+```{r}
+ggplot(test.m, aes(x=value)) +
+  geom_histogram(binwidth=0.02, aes(y=..density..), position="identity", alpha=0.7, color="black") +
+  geom_density(alpha=0.4, color = NA) +
+  labs(x = "", y = "Count", title = 'Distribution of the fractal_dimension variables') + theme_bw() +
+  aes(fill = variable) +
+  scale_fill_manual(values = c("#fec306", "#df5227", "#56B4E9")) +  
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~variable) +
+  ylim(0, 0.5)
+```
+
+```{r}
+shapiro.tests <- t(as.data.frame(lapply(df[,c("fractal_dimension_mean", "fractal_dimension_se", "fractal_dimension_worst")], function(x) shapiro.test(x)$p.value)))
+colnames(shapiro.tests) <- "p-value"
+as.data.frame(shapiro.tests)
+```
+
+*Normal distribution verification:* The shapiro test function and the histogram distribution shape confirmed that the fractal_dimension variables (mean, se, worst) do **not present a normal distribution**, thus we applied non-parametric test - the unpaired two-samples Wilcoxon test (also known as Mann-Whitney test).
+
+```{r}
+wilcox.tests <- t(as.data.frame(lapply(df[,c("fractal_dimension_mean", "fractal_dimension_se", "fractal_dimension_worst")], function(x) wilcox.test(x ~ df$diagnosis, conf.level = 0.99)$p.value)))
+colnames(wilcox.tests) <- "p-value"
+as.data.frame(wilcox.tests)
+```
+
+*Wilcoxon test results:* The p-values are < 0.01 in 2 of 3 texture variables. Hence, we reject the null hypothesis. There are significant differences for fractal_dimension variables (se, worst) between the groups.
+
+**The malignant breast cancer group has the feature fractal_dimension values ("coastline approximation" - 1) higher than the benign group only in fractal_dimension_se and fractal_dimension_worst.**
+
+```{r}
+cor.test(df$fractal_dimension_mean, df$fractal_dimension_worst)
+
+ggplot(df, aes(fractal_dimension_mean, fractal_dimension_worst)) +
+  geom_point(aes(color = diagnosis), size = 1, alpha = 0.4) +
+  scale_color_manual(values = c("#f69400", "#838383")) +
+  scale_fill_manual(values = c("#f69400", "#838383")) +
+  facet_wrap(~diagnosis) +
+  stat_smooth( aes(color = diagnosis, fill = diagnosis), method = "lm") +
+  stat_cor(aes(color = diagnosis), label.y = 4.4) +
+  stat_poly_eq(
+    aes(color = diagnosis, label = ..eq.label..),
+    formula = y ~ x, label.y = 4.2, parse = TRUE) +
+  theme_bw() +
+  ggtitle("Correlation of fractal_dimension variables") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+*Correlation analysis:* The analysis showed a positive, strong (0.7672968) and statistical significance (p-value < 2.2e-16) correlation between fractal_dimension_mean and fractal_dimension_worst variables.
+
+A point-biserial correlation, used to measure the strength and direction of the association between continuous and binary variables, was carried out in order to verify the correlation between the fractal_dimension feature and the diagnosis (benign or malignant).
+```{r}
+b1 <- biserial.cor(df$fractal_dimension_mean, df$diagnosis, level = 2) # Level 2 = the malignant breast cancer group
+cat("Correlation value (r): ", b1, "very weak")
+b2 <- biserial.cor(df$fractal_dimension_se, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b2, "very weak")
+b3 <- biserial.cor(df$fractal_dimension_worst, df$diagnosis, level = 2)
+cat("Correlation value (r): ", b3, "moderate")
+```
+
+*Identifying extreme values:* A commonly used rule (Tukey’s rule) says that the outliers (extreme value, in this case) are values more than 1.5 times the interquartile range from the quartiles, either below Q1 − (1.5 times IQR) or above Q3 + (1.5 times IQR). So, we quantified the outliers in order to better understand/characterize the data distribution and improve the results interpretation, since extreme values could bias the statistic inferences and the predict models.
+```{r}
+out_1 <- which(df$fractal_dimension_mean %in% boxplot(df$fractal_dimension_mean, plot=FALSE)$out)
+n.out_1 <- length(out_1)
+cat("Number of Extreme Values:", n.out_1)
+df[as.numeric(out_1),c("id", "diagnosis", "fractal_dimension_mean")]
+
+out_2 <- which(df$fractal_dimension_se %in% boxplot(df$fractal_dimension_se, plot=FALSE)$out)
+n.out_2 <- length(out_2)
+cat("Number of Extreme Values:", n.out_2)
+df[as.numeric(out_2),c("id", "diagnosis", "fractal_dimension_se")]
+
+out_3 <- which(df$fractal_dimension_worst %in% boxplot(df$fractal_dimension_worst, plot=FALSE)$out)
+n.out_3 <- length(out_3)
+cat("Number of Extreme Values:", n.out_3)
+df[as.numeric(out_3),c("id", "diagnosis", "fractal_dimension_worst")]
+```
+###
+
+---
+
+Correlation analysis for all features (30):
+```{r}
+df.n <- subset(df, select = -c(id, diagnosis))
+corrplot(cor(df.n), type="lower", number.cex = .35, addCoef.col = "black", tl.col = "black", tl.srt = 90, tl.cex = .5, col=brewer.pal(n=8, name="RdBu"), order = "FPC")
+```
+
+The most strong correlations values (0.80 - 0.999) are showed bellow:
+```{r}
+cor.sig <- as.data.frame(as.table(cor(df.n)))
+cor.sig <- subset(cor.sig, c(abs(Freq) > 0.8 & abs(Freq) != 1))
+cor.sig %<>% distinct(Freq, .keep_all = TRUE)
+colnames(cor.sig) <- c("Variables_1", "Variables_2", "Correlation Value")
+cor.sig[order(-cor.sig$'Correlation Value'),] 
+```
+
+**EDA Results:**
+
+1) Most features have the means of its variables (mean, se, worst) higher in the malignant breast cancer group as compared to the benign breast cancer group, **except:**
+  
++ Mean_texture_se (very similar in both groups, p > 0.01)
++ Mean_smoothness_se (very similar in both groups, p > 0.01)
++ Mean_symmetry_se (very similar in both groups, p > 0.01)
++ Mean_fractal_dimension_mean (very similar in both groups, p > 0.01)
+
+2) All the higher means of the variables (mean, se, worst) in the malignant breast cancer group showed p < 0.01 (statistical significance).
+
+3) The variables which showed the most statistical significance difference between the malignant breast cancer and the benign breast cancer groups were:
+  
++ perimeter_worst	2.58E-80
++ radius_worst	1.14E-78
++ area_worst	1.80E-78
++ concave_points_worst	1.86E-77
++ concave_points_mean	1.01E-76
++ perimeter_mean	3.55E-71
++ area_mean	1.54E-68
++ concavity_mean	2.16E-68
++ radius_mean	2.69E-68
++ area_se	5.77E-65
++ concavity_worst	1.76E-63
++ perimeter_se	5.10E-51
++ radius_se	6.22E-49
+
+4) Across 480 correlations between all features (30), **44 (9.08%) showed a very strong correlation value**. 
+
+5) Through the point-biserial correlation analysis, the following variables showed a strong correlation value with the diagnosis variable (malignant or benign):
+  
++ radius_mean: 0.73
++ radius_worst: 0.77
++ perimeter_mean: 0.74
++ perimeter_worst: 0.78
++ area_mean: 0.70
++ area_worst: 0.73
++ concavity_mean: 0.69
++ concavity_worst: 0.65
++ concave_points_mean: 0.77
++ concave_points_worst: 0.79
+
+---
+
+## 4. Principal Component Analysis (PCA)
+
+Principal components analysis (PCA) is a data-reduction technique that transforms a larger number of correlated variables into a smaller set of uncorrelated variables called principal components (PC) or dimensions. We think, that the PCA method could improve the data analysis of this dataset, which has 30 variables highly correlated.
+
+PCA is a great pre-processing tool for picking out the most relevant linear combination of variables and using them in prediction models.
+
+The only drawback PCA has is that it generates the principal components in a unsupervised manner - without looking at the target vector. Besides, it is generally more difficult to interpret the predictors, since each principal component is a combination of original features.
+
+```{r}
+df <- subset(df, select = -id)
+df.v <- subset(df, select = -diagnosis)
+df.d <- subset(df, select = diagnosis)
+
+# Apply PCA
+df.pca <- PCA(df.v, scale.unit = TRUE, graph = FALSE)
+summary(df.pca)
+
+# Extract the eigenvalues of principal components
+eig.val <- as.data.frame(get_eigenvalue(df.pca))
+subset(eig.val, eigenvalue > 1) # The Kaiser–Harris criterion
+```
+The Kaiser–Harris criterion suggests retaining components with eigenvalues greater than 1 (cutoff point). Thus, the cutoff point has a eigenvalue = 1.207, so we stopped at the sixth principal component.
+
+```{r}
+fviz_eig(df.pca, addlabels=TRUE, hjust = 0, barfill = "#4189b3", ncp=6) + ylim(0, 50)
+```
+
+In our analysis, **the first six principal components explain 88.75% of the dataset variance**. The first dimension is associated with the largest eigenvalue, the second dimension with the second-largest eigenvalue, and so on.
+
+### 4.1. Principal Components Exploration: {.tabset .tabset-fade}
+
+#### 1. Quality of variables
+```{r}
+head(get_pca_var(df.pca)$cos2)
+```
+
+```{r}
+par(mfrow=c(1,2))
+
+corrplot(get_pca_var(df.pca)$cos2[1:16,], number.cex = .65, addCoef.col = "black", tl.col = "black", tl.cex = 0.75)
+
+corrplot(get_pca_var(df.pca)$cos2[17:30,], number.cex = .65, addCoef.col = "black", tl.col = "black", tl.cex = 0.75)
+```
+
+For example, in the columns labeled Dim.1 (the first PC), **63.64% of the variance in radius_mean variable is accounted by the Dim.1, while 31% is by the Dim.2 (second PC)**.
+
+#### 2. Coordinates of variables
+```{r}
+head(get_pca_var(df.pca)$coord)
+```
+The columns contains the component loadings, which are the **correlations of the observed variables with the principal components (PC)**. The radius_mean is positive strong (0.79) correlated to the first principal component; while is negative moderate (-0.55) correlated to the second component.
+
+```{r}
+fviz_pca_var(df.pca,labelsize = 3, 
+             col.var = "coord",
+             gradient.cols = c("#56B4E9", "#fec306", "#df5227"),
+             repel = TRUE
+)
+```
+
+The area_mean, area_worst, radius_mean, radius_worst, perimeter_mean and perimeter_worst are positively correlated, and those 6 metrics contribute the most to the construction of the first principal component (dimension 1).
+
+The fractal_dimension_mean, fractal_dimension_se, fractal_dimension_worst and smoothness_se contribute the most to 2nd component.
+
+Thus, the 1st component mainly relates to geometric quantitative measures (area, radius and perimeter); while the 2nd dimension is mainly relates to appearance/aspect or geometric qualitative measures (fractal_dimensions, smoothness).
+
+#### 3. Contributions of variables
+```{r}
+head(get_pca_var(df.pca)$contrib)
+```
+
+```{r}
+p1 <- fviz_contrib(df.pca, choice = "var", axes = 1, fill="#4189b3", top=15)
+p2 <- fviz_contrib(df.pca, choice = "var", axes = 2, fill="#f69400", color="white", top=15)
+grid.arrange(p1,p2,ncol=2)
+```
+
+The area_mean contributes 4.88% to the first principal component and 5.33% to the second component. The texture_mean variable contributes 36.36% to the fourth component.
+
+#### 4. Results for individuals
+```{r}
+fviz_pca_ind(df.pca,
+             geom.ind = "point",
+             col.var = "black",
+             col.ind = df.d$diagnosis,
+             palette = c("#f69400","#4189b3"),
+             addEllipses = TRUE,
+             legend.title = "Diagnosis",
+             mean.point = FALSE, labelsize = 3, pointsize = 3, pointshape = 20)
+```
+
+The 1st principal component (dimension 1) indicates the principal axis of variability between groups (benign and malignant).
+
+###
+
+---
+
+## 5. Modeling and Predictions
+
+```{r}
+# Train and Test (Original Data)
+set.seed(1234)
+training.samples <- df$diagnosis %>% 
+    createDataPartition(p = 0.8, list = FALSE)
+df.train <- df[ training.samples,]
+df.test  <- df[-training.samples,]
+
+# Train and Test (PCA pre-processing)
+df.pca2 <- PCA(df.v, scale.unit = TRUE, graph = FALSE, ncp = 6)
+set.seed(1234)
+df.pca.final <- cbind(df.d, df.pca2$ind$coord)
+training.samples.pca <- df.pca.final$diagnosis %>% 
+    createDataPartition(p = 0.8, list = FALSE)
+df.train.pca <- df.pca.final[ training.samples.pca,]
+df.test.pca  <- df.pca.final[-training.samples.pca,]
+```
+
+### {.tabset .tabset-fade}
+
+#### 1. KNN
+```{r}
+# Original Data
+set.seed(1234)
+model.knn <- train(
+  diagnosis ~ ., data = df.train, method = "knn",
+  trControl = trainControl("cv", number = 10),
+  preProcess = c("center","scale"),
+  tuneLength = 20
+  )
+
+plot(model.knn)
+
+# Prediction Original Data
+predicted.classes <- model.knn %>% predict(df.test)
+matrix.knn <- confusionMatrix(predicted.classes, df.test$diagnosis)
+matrix.knn
+```
+
+```{r}
+# PCA
+set.seed(1234)
+model.knn.pca <- train(
+  diagnosis ~ ., data = df.train.pca, method = "knn",
+  trControl = trainControl("cv", number = 10),
+  preProcess = c("center","scale"),
+  tuneLength = 20
+  )
+
+plot(model.knn.pca)
+
+# Prediction PCA
+predicted.classes.pca <- model.knn.pca %>% predict(df.test.pca)
+matrix.knn.pca <- confusionMatrix(predicted.classes.pca, df.test.pca$diagnosis)
+matrix.knn.pca
+```
+
+#### 2. CART
+```{r}
+# CART Model Original Data
+set.seed(1234)
+model.tree <- rpart(
+  diagnosis ~ ., data = df.train, method = "class")
+
+rpart.plot(model.tree, extra=108)
+printcp(model.tree)
+rpart.rules(model.tree, extra=108)
+
+# Prediction
+predicted.classes <- model.tree %>% predict(df.test, type = "class")
+matrix.tree <- confusionMatrix(predicted.classes, df.test$diagnosis)
+matrix.tree
+
+#Pruning
+model.tree.p <- prune(model.tree, cp=.011765)
+rpart.plot(model.tree.p, extra=108)
+rpart.rules(model.tree.p, extra=108)
+
+# Prediction pos-pruning
+predicted.classes <- model.tree.p %>% predict(df.test, type = "class")
+matrix.tree.p <- confusionMatrix(predicted.classes, df.test$diagnosis)
+matrix.tree.p
+```
+
+```{r}
+# PCA
+set.seed(1234)
+model.tree.pca <- rpart(
+  diagnosis ~ ., data = df.train.pca, method = "class")
+
+rpart.plot(model.tree.pca, extra=108)
+printcp(model.tree.pca)
+rpart.rules(model.tree.pca, extra=108)
+
+# Prediction PCA
+predicted.classes.pca <- model.tree.pca %>% predict(df.test.pca, type = "class")
+matrix.tree.pca <- confusionMatrix(predicted.classes.pca, df.test.pca$diagnosis)
+matrix.tree.pca
+```
+
+#### 3. Random Forest
+```{r}
+# Random Forest Model (All variables) Original Data
+set.seed(1234)
+model.rf <- train(
+  diagnosis ~ ., data = df.train, method = "rf",
+  trControl = trainControl("cv", number = 10),
+  importance = FALSE
+  )
+model.rf$finalModel
+
+# Plot MeanDecreaseGini
+varImpPlot(model.rf$finalModel, type = 2)
+varImp(model.rf)
+
+# Prediction
+predicted.classes <- model.rf %>% predict(df.test)
+matrix.rf <- confusionMatrix(predicted.classes, df.test$diagnosis)
+matrix.rf
+
+# Random Forest Model (Top 5 variables most important) Original Data
+set.seed(1234)
+model.rf2 <- train(
+  diagnosis ~ perimeter_worst + radius_worst + concave_points_worst + area_worst + concave_points_mean, data = df.train, method = "rf",
+  trControl = trainControl("cv", number = 10),
+  importance = FALSE
+  )
+model.rf2$finalModel
+
+# Plot MeanDecreaseGini
+varImpPlot(model.rf2$finalModel, type = 2)
+varImp(model.rf2)
+
+# Prediction
+predicted.classes <- model.rf2 %>% predict(df.test)
+matrix.rf2 <- confusionMatrix(predicted.classes, df.test$diagnosis)
+matrix.rf2
+```
+
+```{r}
+# PCA
+set.seed(1234)
+model.rf.pca <- train(
+  diagnosis ~ ., data = df.train.pca, method = "rf",
+  trControl = trainControl("cv", number = 10),
+  importance = FALSE
+  )
+model.rf.pca$finalModel
+
+# Plot MeanDecreaseGini
+varImpPlot(model.rf.pca$finalModel, type = 2)
+varImp(model.rf.pca)
+
+# Prediction PCA
+predicted.classes.pca <- model.rf.pca %>% predict(df.test.pca)
+matrix.rf.pca <- confusionMatrix(predicted.classes.pca, df.test.pca$diagnosis)
+matrix.rf.pca
+```
+
+
+#### 4. Logistic Regression
+```{r}
+model.ml.pca <- train(diagnosis ~., data = df.train.pca, method = "glm")
+summary(model.ml.pca)
+
+predicted.classes.pca <- model.ml.pca %>% predict(df.test.pca)
+matrix.ml.pca <- confusionMatrix(predicted.classes.pca, df.test.pca$diagnosis)
+matrix.ml.pca
+```
+
+#### 5. SVM
+```{r}
+# Support Vector Machine Original Data
+set.seed(1234)
+model.svm <- train(
+  diagnosis ~., data = df.train, method = "svmLinear",
+  trControl = trainControl("cv", number = 10),
+  preProcess = c("center","scale")
+  )
+
+predicted.classes <- model.svm %>% predict(df.test)
+matrix.svm <- confusionMatrix(predicted.classes, df.test$diagnosis)
+matrix.svm
+```
+
+```{r}
+# PCA
+set.seed(1234)
+model.svm.pca <- train(
+  diagnosis ~., data = df.train.pca, method = "svmLinear",
+  trControl = trainControl("cv", number = 10),
+  preProcess = c("center","scale")
+  )
+
+predicted.classes.pca <- model.svm.pca %>% predict(df.test.pca)
+matrix.svm.pca <- confusionMatrix(predicted.classes.pca, df.test.pca$diagnosis)
+matrix.svm.pca
+
+```
+
+###
+
+---
+
+## 6. Conclusions
+```{r}
+#KNN
+knn.1 <- as.data.frame(matrix.knn$overall["Accuracy"])
+colnames(knn.1) <- ""
+knn.2 <- as.data.frame(matrix.knn$byClass[1:4])
+colnames(knn.2) <- ""
+knn <- rbind(knn.1, knn.2)
+colnames(knn) <- "KNN"
+
+knn.pca1 <- as.data.frame(matrix.knn.pca$overall["Accuracy"])
+colnames(knn.pca1) <- ""
+knn.pca2 <- as.data.frame(matrix.knn.pca$byClass[1:4])
+colnames(knn.pca2) <- ""
+knn.pca <- rbind(knn.pca1, knn.pca2)
+colnames(knn.pca) <- "KNN PCA"
+row.names(knn.pca) <- c()
+
+# CART
+tree.1 <- as.data.frame(matrix.tree$overall["Accuracy"])
+colnames(tree.1) <- ""
+tree.2 <- as.data.frame(matrix.tree$byClass[1:4])
+colnames(tree.2) <- ""
+tree <- rbind(tree.1, tree.2)
+colnames(tree) <- "CART"
+row.names(tree) <- c()
+
+tree.p.1 <- as.data.frame(matrix.tree.p$overall["Accuracy"])
+colnames(tree.p.1) <- ""
+tree.p.2 <- as.data.frame(matrix.tree.p$byClass[1:4])
+colnames(tree.p.2) <- ""
+tree.p <- rbind(tree.p.1, tree.p.2)
+colnames(tree.p) <- "CART Pruned"
+row.names(tree.p) <- c()
+
+tree.pca1 <- as.data.frame(matrix.tree.pca$overall["Accuracy"])
+colnames(tree.pca1) <- ""
+tree.pca2 <- as.data.frame(matrix.tree.pca$byClass[1:4])
+colnames(tree.pca2) <- ""
+tree.pca <- rbind(tree.pca1, tree.pca2)
+colnames(tree.pca) <- "CART PCA"
+row.names(tree.pca) <- c()
+
+#RF 
+rf.1 <- as.data.frame(matrix.rf$overall["Accuracy"])
+colnames(rf.1) <- ""
+rf.2 <- as.data.frame(matrix.rf$byClass[1:4])
+colnames(rf.2) <- ""
+rf <- rbind(rf.1, rf.2)
+colnames(rf) <- "RF"
+row.names(rf) <- c()
+
+rf2.1 <- as.data.frame(matrix.rf2$overall["Accuracy"])
+colnames(rf2.1) <- ""
+rf2.2 <- as.data.frame(matrix.rf2$byClass[1:4])
+colnames(rf2.2) <- ""
+rf2 <- rbind(rf2.1, rf2.2)
+colnames(rf2) <- "RF (TOP 5)"
+row.names(rf2) <- c()
+
+rf.pca1 <- as.data.frame(matrix.rf.pca$overall["Accuracy"])
+colnames(rf.pca1) <- ""
+rf.pca2 <- as.data.frame(matrix.rf.pca$byClass[1:4])
+colnames(rf.pca2) <- ""
+rf.pca <- rbind(rf.pca1, rf.pca2)
+colnames(rf.pca) <- "RF PCA"
+row.names(rf.pca) <- c()
+
+# Logit
+ml.pca1 <- as.data.frame(matrix.ml.pca$overall["Accuracy"])
+colnames(ml.pca1) <- ""
+ml.pca2 <- as.data.frame(matrix.ml.pca$byClass[1:4])
+colnames(ml.pca2) <- ""
+ml.pca <- rbind(ml.pca1, ml.pca2)
+colnames(ml.pca) <- "Logit PCA"
+row.names(ml.pca) <- c()
+
+#SVM
+svm.1 <- as.data.frame(matrix.svm$overall["Accuracy"])
+colnames(svm.1) <- ""
+svm.2 <- as.data.frame(matrix.svm$byClass[1:4])
+colnames(svm.2) <- ""
+svm <- rbind(svm.1, svm.2)
+colnames(svm) <- "SVM"
+row.names(svm) <- c()
+
+svm.pca1 <- as.data.frame(matrix.svm.pca$overall["Accuracy"])
+colnames(svm.pca1) <- ""
+svm.pca2 <- as.data.frame(matrix.svm.pca$byClass[1:4])
+colnames(svm.pca2) <- ""
+svm.pca <- rbind(svm.pca1, svm.pca2)
+colnames(svm.pca) <- "SVM PCA"
+row.names(svm.pca) <- c()
+
+final <- as.data.frame(t(cbind(knn, knn.pca, tree, tree.p, tree.pca, rf, rf2, rf.pca, ml.pca, svm, svm.pca)))
+
+as.datatable(formattable(final, list(
+            Accuracy = color_tile("#e6ad9c","#df5227"),
+            Sensitivity = color_tile("#b5d7eb","#56B4E9"),
+            Specificity = color_tile("#b5d7eb","#56B4E9"),
+            `Pos Pred Value` = color_tile("#f2dfa2","#fec306"),
+            `Neg Pred Value` = color_tile("#f2dfa2","#fec306")
+            )), options = list(pageLength =11, dom = 'tip'))
+```
+
+The Support Vector Machine model with PCA pre-processing performed better:
+
++ **Accuracy** value of 97.35%, which represents the model ability to differentiate the diagnosis (malignant and benign) correctly;
++ **Sensitivity**, which means the model ability to found every single individual with disease, **was 100% (correctly identifies all patients with the disease)**;
++ **Specificity**, which is related to the ability of the model to correctly identify those patients without the disease, **was 92.8% (92.8% of patients without the disease as test negative (true negatives) but 7.2% patients without the disease are incorrectly identified as test positive (false positives))**;
++ **Pos Pred Value**, which shows the percent of true positives from the total number of patients with the disease, was 95.9%;
++ **Neg Pred Value**,  which shows the percent of true negatives from the total number of patients that did not have the code, was 100%.
+
+The Random Forest, Regression Logistic with PCA pre-processing, KNN and SVM models achieved a very good accuracy as well, 96.4%.
+
+In general, **the models performed with a range accuracy of 90.2% - 97.3%** with a good balance of sensitivity and specificity. By balance we mean similar levels of performance.
+
+Finally, taking into account the analysis conducted, we'd like to point out that the following cell nuclei characteristics seem to be the most relevant for diagnosis of breast cancer through the fine needle aspiration (FNA) procedure:
+
++ perimeter_worst
++ concave_points_worst
++ area_worst
++ concave_points_mean
++ radius_worst
+
+**We hope you enjoy this kernel...**
+
+***If you have any question or suggestion about this project, we will be appreciate to receive them...***
