@@ -1,6 +1,6 @@
 # Project: Breast Cancer Diagnosis - EDA and Machine Learning
 
-<a href="https://bdetanico.github.io/Breast-Cancer-Diagnosis/Summary-Report-on-Foodborne-Disease-Outbreaks.html">Project Link</a>
+<a href="https://bdetanico.github.io/Breast-Cancer-Diagnosis/Breast-Cancer-Diagnostic_v5.html">Project Link</a>
 
 The dataset, found on UCI Machine Learning Repository: https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+%28Diagnostic%29, consists of features which were computed from digitized images of fine needle aspirate (FNA) procedure of breast mass. The features describe characteristics of the cell nuclei present in the images.
 
